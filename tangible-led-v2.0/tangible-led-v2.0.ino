@@ -10,6 +10,13 @@ int acceState = LOW;
 int ledState = LOW;
 int ledMode;
 
+//led colors
+int colorMode0[] = {255,255,255};//white
+int colorMode1[] = {242,214,73};//yellow
+int colorMode2[] = {83, 26,232};//blue
+//colorMode3 is rainbow
+
+
 //capacitive Sensor
 CapacitiveSensor   cs_4_2 = CapacitiveSensor(4, 2);       // 10M resistor between pins 4 & 2, pin 2 is sensor pin, add a wire and or foil if desired
 int capaTouchHoldTime = 1000;
@@ -137,6 +144,18 @@ void loop() {
 //        acceState = LOW;     
 //      }
 //    }
+
+    if(ledState == HIGH){
+      if (ledMode%4 == 0){
+        Serial.println("Color mode: 0");
+      }else if (ledMode%4 == 1){
+        Serial.println("Color mode: 1");
+      }else if (ledMode%4 == 2){
+        Serial.println("Color mode: 2");
+      }else if (ledMode%4 == 3){
+        Serial.println("Color mode: 3");
+      }
+    }
   }
 
   Serial.print("acceState: ");
