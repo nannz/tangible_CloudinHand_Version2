@@ -7,11 +7,11 @@ const int zpin = A0;
 // initialize to mid-range and allow calibration to
 // find the minimum and maximum for each axis
 int xRawMin = 410;
-int xRawMax = 590;
+int xRawMax = 625;
 int yRawMin = 395;
 int yRawMax = 620;
 int zRawMin = 430;
-int zRawMax = 675;
+int zRawMax = 655;
 int xRaw = 0;
 int yRaw = 0;
 int zRaw = 0;
@@ -45,30 +45,50 @@ void loop() {
   long xScaled = map(xRaw, xRawMin, xRawMax, -1000, 1000);
   long yScaled = map(yRaw, yRawMin, yRawMax, -1000, 1000);
   long zScaled = map(zRaw, zRawMin, zRawMax, -1000, 1000);
-  // re-scale to fractional Gs
-  float xAccel = xScaled / 1000.0;
-  float yAccel = yScaled / 1000.0;
-  float zAccel = zScaled / 1000.0;
+  long xAngle = map(xRaw, xRawMin, xRawMax, -180, 180);
+  long yAngle = map(yRaw, yRawMin, yRawMax, -180, 180);
+  long zAngle = map(zRaw, zRawMin, zRawMax, -180, 180);
+  /*
+  Serial.print("xAngle: ");
+  Serial.print(xAngle);
+  Serial.print(" | yAngle: ");
+  Serial.print(yAngle);
+  Serial.print(" | zAngle: ");
+  Serial.println(zAngle);
+  //*/
+  
 
   //get the value of saturation
-  long saturationFloat = map(zScaled,-1000,1000,0,255);
+  long saturationFloat;
+  if(zAngle < 0){
+    saturationFloat= map(zAngle,-180,0,0,255);
+  }else{
+    saturationFloat= map(zAngle,0,180,255,0);
+  }
+   
   saturation = (int)saturationFloat;
+  /*
   Serial.print("saturation: ");
   Serial.print(saturation);
   Serial.print("|  ");
+  */
 
   //get the hue value
-  float angle = atan2(yAccel,xAccel) * 180/M_PI;
-  float hueValue = map(angle, -180.0, 180.0, 0, 259);
+  float angle = atan2(yAngle,xAngle) * (180/PI);
+  if(angle < 0) angle = 180+angle;
+  float hueValue = map(angle, 0, 180.0, 0, 259);
   hue = (int)hueValue;
   //Serial.print("angle1: ");
   //Serial.print(angle);
+  /*
   Serial.print("hue: ");
   Serial.print(hue);
   Serial.print("|  ");
+  */
 
   //get RGB value from the hue value and saturation value.
   getRGB(hue,saturation,value,rgbColor);
+  ///*
   Serial.print("rgb: ");
   Serial.print(rgbColor[0]);
   Serial.print(", ");
@@ -76,6 +96,7 @@ void loop() {
   Serial.print(", ");
   Serial.print(rgbColor[2]);
   Serial.println(" ");
+  //*/
   
   // delay before next reading:
   delay(100);

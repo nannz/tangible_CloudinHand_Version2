@@ -3,6 +3,11 @@
 #include "Adafruit_DRV2605.h"
 Adafruit_DRV2605 drv;
 #include <CapacitiveSensor.h> //capacitive sensor: send pin attached to the resistor
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+#include <avr/power.h>
+#endif
+
 
 //states
 int totalState = LOW;
@@ -11,11 +16,16 @@ int ledState = LOW;
 int ledMode;
 
 //led colors
-int colorMode0[] = {255,255,255};//white
-int colorMode1[] = {242,214,73};//yellow
-int colorMode2[] = {83, 26,232};//blue
+int colorMode0[] = {255, 255, 255}; //white
+int colorMode1[] = {242, 214, 73}; //yellow
+int colorMode2[] = {83, 26, 232}; //blue
 //colorMode3 is rainbow
 
+//neopixel set up
+#define PIN            6
+#define NUMPIXELS      4
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+int delayLed = 500; // delay for half a second
 
 //capacitive Sensor
 CapacitiveSensor   cs_4_2 = CapacitiveSensor(4, 2);       // 10M resistor between pins 4 & 2, pin 2 is sensor pin, add a wire and or foil if desired
@@ -48,7 +58,9 @@ int responseDelay = 30;
 void setup() {
   //capacitive touch, calibration
   cs_4_2.set_CS_AutocaL_Millis(0xFFFFFFFF);     // turn off autocalibrate on channel 1 - just as an example
-
+  pixels.begin(); // This initializes the NeoPixel library.
+  pixels.show();
+  
   Serial.begin(9600);
   //begin the motor drive
   drv.begin();
@@ -96,9 +108,10 @@ void loop() {
       if ((fsrUpTime - fsrDownTime) >= fsrLongHoldTime) {
         Serial.println("trigger long hold | turn on/off");
         totalState = !totalState;
-        if(ledState == HIGH){
+        if (ledState == HIGH) {
           ledState = LOW;//turn off the led
-        }else{
+          ledMode = 0;
+        } else {
           ledState = HIGH; // turn on the led
           ledMode = 0; //led starts with mode 0
         }
@@ -108,7 +121,7 @@ void loop() {
           Serial.println("trigger clicked | change led mode");
           ledState = HIGH;
           ledMode += 1;
-        }else{
+        } else {
           ledState = LOW;
         }
         motorLevel = 0;
@@ -137,25 +150,35 @@ void loop() {
       ledState = HIGH;
     }
 
-//    //有问题啊
-//    if (millis() - capacitiveEnd > capaTouchHoldTime){
-//      Serial.println("test");
-//      if(capacitiveRead <capaMinRead){
-//        acceState = LOW;     
-//      }
-//    }
+    //    //有问题啊
+    //    if (millis() - capacitiveEnd > capaTouchHoldTime){
+    //      Serial.println("test");
+    //      if(capacitiveRead <capaMinRead){
+    //        acceState = LOW;
+    //      }
+    //    }
 
-    if(ledState == HIGH){
-      if (ledMode%4 == 0){
+    if (ledState == HIGH) {
+      if (ledMode % 4 == 0) {
         Serial.println("Color mode: 0");
-      }else if (ledMode%4 == 1){
+        setNeoColor(colorMode0[0],colorMode0[1],colorMode0[2]);
+      } else if (ledMode % 4 == 1) {
         Serial.println("Color mode: 1");
-      }else if (ledMode%4 == 2){
+        setNeoColor(colorMode1[0],colorMode1[1],colorMode1[2]);
+      } else if (ledMode % 4 == 2) {
         Serial.println("Color mode: 2");
-      }else if (ledMode%4 == 3){
+        setNeoColor(colorMode2[0],colorMode2[1],colorMode2[2]);
+      } else if (ledMode % 4 == 3) {
         Serial.println("Color mode: 3");
+        setNeoColor(0,0,255);
+        //rainbow(10);
       }
+    }else{
+      setNeoColor(0,0,0);
     }
+  }else{
+    ledState = LOW;
+    setNeoColor(0,0,0);
   }
 
   Serial.print("acceState: ");
@@ -165,7 +188,7 @@ void loop() {
   Serial.print(" | ledMode: ");
   Serial.println(ledMode);
   //capacitiveEnd = 0;
-  
+
   Serial.print("totalState: ");
   if (totalState == HIGH) {
     Serial.println("on");
@@ -177,4 +200,38 @@ void loop() {
   //run the drive
   drv.setRealtimeValue(motorLevel);
   //delay(responseDelay);
+}
+
+
+void setNeoColor(int r, int g, int b){
+  for(int i=0;i<NUMPIXELS;i++){
+    // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
+    pixels.setPixelColor(i, pixels.Color(r,g,b)); // Moderately bright green color.
+    pixels.show(); // This sends the updated pixel color to the hardware.
+    //delay(delayLed); // Delay for a period of time (in milliseconds).
+  }
+}
+void rainbow(uint8_t wait) {
+  uint16_t i, j;
+  for(j=0; j<256; j++) {
+    for(i=0; i<pixels.numPixels(); i++) {
+      pixels.setPixelColor(i, Wheel((i+j) & 255));
+    }
+    pixels.show();
+    delay(wait);
+  }
+}
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return pixels.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return pixels.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return pixels.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
