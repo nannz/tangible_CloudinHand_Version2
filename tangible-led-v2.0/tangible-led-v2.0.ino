@@ -7,6 +7,8 @@ Adafruit_DRV2605 drv;
 //states
 int totalState = LOW;
 int acceState = LOW;
+int ledState = LOW;
+int ledMode;
 
 //capacitive Sensor
 CapacitiveSensor   cs_4_2 = CapacitiveSensor(4, 2);       // 10M resistor between pins 4 & 2, pin 2 is sensor pin, add a wire and or foil if desired
@@ -87,10 +89,20 @@ void loop() {
       if ((fsrUpTime - fsrDownTime) >= fsrLongHoldTime) {
         Serial.println("trigger long hold | turn on/off");
         totalState = !totalState;
+        if(ledState == HIGH){
+          ledState = LOW;//turn off the led
+        }else{
+          ledState = HIGH; // turn on the led
+          ledMode = 0; //led starts with mode 0
+        }
         motorLevel = 0;
       } else {
         if (totalState == HIGH) {
           Serial.println("trigger clicked | change led mode");
+          ledState = HIGH;
+          ledMode += 1;
+        }else{
+          ledState = LOW;
         }
         motorLevel = 0;
       }
@@ -100,7 +112,7 @@ void loop() {
   }
   prevFsrState = curFsrState;
 
-  //sensing capacitive touch
+  //sensing capacitive touch only when the total state is high
   if (totalState == HIGH ) {
 
     //long capacitiveStart = millis();
@@ -108,12 +120,14 @@ void loop() {
     if (capacitiveRead >= capaMinRead) {
       //capacitiveStart = millis();
       acceState = HIGH;
+      ledState = LOW;
       Serial.print("capacitiveRead: ");
       Serial.print(capacitiveRead);
       Serial.println(" | start accelerometer mode.");
     } else {
       capacitiveEnd = millis();
       acceState = LOW;
+      ledState = HIGH;
     }
 
 //    //有问题啊
@@ -126,7 +140,11 @@ void loop() {
   }
 
   Serial.print("acceState: ");
-  Serial.println(acceState);
+  Serial.print(acceState);
+  Serial.print(" | ledState: ");
+  Serial.print(ledState);
+  Serial.print(" | ledMode: ");
+  Serial.println(ledMode);
   //capacitiveEnd = 0;
   
   Serial.print("totalState: ");
