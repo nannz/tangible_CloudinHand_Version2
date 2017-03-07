@@ -1,5 +1,6 @@
 
 #include <CapacitiveSensor.h>
+//send pin attached to the resistor
 
 CapacitiveSensor   cs_4_2 = CapacitiveSensor(4, 2);       // 10M resistor between pins 4 & 2, pin 2 is sensor pin, add a wire and or foil if desired
 void setup() {
