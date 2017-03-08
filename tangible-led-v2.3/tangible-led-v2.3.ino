@@ -29,8 +29,9 @@ int delayLed = 500; // delay for half a second
 
 //capacitive Sensor
 CapacitiveSensor   cs_4_2 = CapacitiveSensor(4, 2);       // 10M resistor between pins 4 & 2, pin 2 is sensor pin, add a wire and or foil if desired
+long capacitiveRead = 0;
 int capaTouchHoldTime = 1000;
-int capaMinRead = 9000;
+int capaMinRead = 2000;
 long capacitiveStart = -1;
 long capacitiveEnd = -1;
 
@@ -101,6 +102,31 @@ void setup() {
 void loop() {
   //reading the fsr value
   fsrReading = analogRead(fsrPin);
+  capacitiveRead =  cs_4_2.capacitiveSensor(10);
+  Serial.println(capacitiveRead);
+  if (totalState == LOW){
+    ledState = LOW;
+    acceState = LOW;
+    motorLevel = 0;
+  }
+
+
+  if (capacitiveRead >= capaMinRead ) {  
+      Serial.println("test");
+      if ( totalState == LOW ) { //如果现在是关机状态,就打开它
+        totalState = HIGH;
+        turnOn = true;
+        turnOff = false;     
+      }
+      if (totalState == HIGH){
+        acceState = HIGH;
+        ledState = LOW;
+        motorLevel = 0;
+      }
+  }
+  //time = millis();
+
+ //----------fsr-------// 
   //Serial.print("fsrReading: ");
   //Serial.println(fsrReading);
   if (fsrReading <= fsrTouchStartPoint) {
@@ -108,7 +134,7 @@ void loop() {
   } else {
     curFsrState = HIGH;
   }
-
+  //record the time for drive effect
   if (curFsrState == HIGH && prevFsrState == LOW) {
     //press down
     fsrDownTime = millis();
@@ -117,173 +143,77 @@ void loop() {
     //press up
     fsrUpTime = millis();
   }
-
-
   //remind the click time is enough using motor drive.
   if (curFsrState == HIGH && (millis() - fsrDownTime) >= fsrHoldTime) {
-    //Serial.println("It's enough hold time.");
+    Serial.println("It's enough hold time.");
     if (totalState == HIGH) {
-      //only when the state is on, the click effect would be triggered
       motorLevel = fsrClickDriveEffect;
+      drv.setRealtimeValue(fsrClickDriveEffect);
     }
     //remind the press time is enough.
     if ((millis() - fsrDownTime) >= fsrLongHoldTime) {
-      //Serial.println("It's enough press time.");
+      Serial.println("It's enough press time.");
       motorLevel = fsrPressDriveEffect;
+      drv.setRealtimeValue(fsrPressDriveEffect);
     }
   }
-
-  //trigger the hold/press mode.
-  if (curFsrState == LOW && prevFsrState == HIGH && millis() - time > debounce) { //手抬起来
-    if ((fsrUpTime - fsrDownTime) >= fsrHoldTime) {
-      if ((fsrUpTime - fsrDownTime) >= fsrLongHoldTime) {
-        //Serial.println("trigger long hold | turn on/off");
-        if (totalState == HIGH) {
+//提醒你手抬起来,然后你手抬起来以后
+  if (curFsrState == LOW && prevFsrState == HIGH ) { //手抬起来
+    motorLevel = 0;
+    if ((fsrUpTime - fsrDownTime) >= fsrHoldTime) { //click
+      //turn on the cloud just by clicking
+      if(totalState == LOW){
+        totalState = HIGH;
+        turnOn = true;
+        turnOff = false;
+        ledState = HIGH;
+        acceState = LOW;
+      }else{
+        //it's already turn on
+        ledState = HIGH;
+        ledMode += 1;
+        acceState = LOW;
+      }
+      if((fsrUpTime - fsrDownTime) >= fsrLongHoldTime) {
+        if(totalState == HIGH){ // long hold to turn off
           totalState = LOW;
           turnOn = false;
           turnOff = true;
-        } else {
+        }else{//已关机,就开机,但其实没什么用
           totalState = HIGH;
           turnOn = true;
           turnOff = false;
         }
-
-//        if (ledState == HIGH) {
-//          ledState = LOW;//turn off the led
-//          ledMode = 0;
-//        } else {
-//          ledState = HIGH; // turn on the led
-//          ledMode = 0; //led starts with mode 0
-//        }
-        motorLevel = 0;
-        totalState = !totalState;
-      } else {
-        if (totalState == HIGH) {
-          //Serial.println("trigger clicked | change led mode");
-          ledState = HIGH;
-          ledMode += 1;
-        } else {
-          ledState = LOW;
-        }
-        motorLevel = 0;
-      }
-    } else {
-      motorLevel = 0;
+      }      
     }
-    time = millis();
   }
+  //-------fsr end -------//
 
+
+  //-----turning on and off effect ----//
   if (turnOff == true) {
+    Serial.println("turnning off");
+    motorLevel = 0;
+    drv.setRealtimeValue(0);
     turnOffLED(currentColor);
     ledState = LOW;
     turnOff = false;
   }
-  if (turnOn = true) {
+  if (turnOn == true) {
+    Serial.println("turnning on");
+    //motorLevel = 0;
     turnOnLED(beginColor);
     ledState = HIGH;
     ledMode = 0;
     turnOn = false;
   }
-  //  prevFsrState = curFsrState;
 
-  //sensing capacitive touch only when the total state is high
-  if (totalState == HIGH && turnOn == false) {
-
-    //long capacitiveStart = millis();
-    long capacitiveRead =  cs_4_2.capacitiveSensor(10);
-    if (capacitiveRead >= capaMinRead) {
-      //capacitiveStart = millis();
-      acceState = HIGH;
-      ledState = LOW;
-
-      /*
-        Serial.print("capacitiveRead: ");
-        Serial.print(capacitiveRead);
-        Serial.println(" | start accelerometer mode.");
-      */
-    } else {
-      capacitiveEnd = millis();
-      acceState = LOW;
-      ledState = HIGH;
-    }
-
-    //    //有问题啊
-    //    if (millis() - capacitiveEnd > capaTouchHoldTime){
-    //      Serial.println("test");
-    //      if(capacitiveRead <capaMinRead){
-    //        acceState = LOW;
-    //      }
-    //    }
-
-    if (ledState == HIGH && turnOn == false) {
-      if (ledMode % 4 == 0) {
-        //Serial.println("Color mode: 0");
-        setNeoColor(colorMode0[0], colorMode0[1], colorMode0[2]);
-      } else if (ledMode % 4 == 1) {
-        //Serial.println("Color mode: 1");
-        setNeoColor(colorMode1[0], colorMode1[1], colorMode1[2]);
-      } else if (ledMode % 4 == 2) {
-        //Serial.println("Color mode: 2");
-        setNeoColor(colorMode2[0], colorMode2[1], colorMode2[2]);
-      } else if (ledMode % 4 == 3) {
-        //Serial.println("Color mode: 3");
-        //setNeoColor(0, 0, 255);
-        rainbow(20);
-      }
-    } else {//ledState is LOW
-      setNeoColor(0, 0, 0);
-    }
-  } else {
-    ledState = LOW;
-    setNeoColor(0, 0, 0);
+  if (totalState == HIGH && turnOn == false){
+    
   }
-
-  if (acceState == HIGH) {
-    //read data from accelerometer
-    xRaw = ReadAxis(xpin);
-    yRaw = ReadAxis(ypin);
-    zRaw = ReadAxis(zpin);
-
-    //showRawData();//show the current x,y,z raw data
-    //AutoCalibrate(xRaw, yRaw, zRaw);//check the max and min of xyzAxises
-
-    getAcceColor(xRaw, yRaw, zRaw, rgbColor);
-    /*
-      Serial.print("rgb: ");
-      Serial.print(rgbColor[0]);
-      Serial.print(", ");
-      Serial.print(rgbColor[1]);
-      Serial.print(", ");
-      Serial.print(rgbColor[2]);
-      Serial.println(" ");
-    */
-    setNeoColor(rgbColor[0], rgbColor[1], rgbColor[2]);
-  }
-
-  /*
-    Serial.print("acceState: ");
-    Serial.print(acceState);
-    Serial.print(" | ledState: ");
-    Serial.print(ledState);
-    Serial.print(" | ledMode: ");
-    Serial.println(ledMode);
-    //capacitiveEnd = 0;
-  */
-
-  /*
-    Serial.print("totalState: ");
-    if (totalState == HIGH) {
-      Serial.println("on");
-    }
-    if (totalState == LOW) {
-      Serial.println("off");
-    }
-  */
-
-  //run the drive
-  drv.setRealtimeValue(motorLevel);
   
   prevFsrState = curFsrState;
+  drv.setRealtimeValue(motorLevel);
   delay(responseDelay);
 }
 
@@ -352,7 +282,6 @@ void getAcceColor(int xRaw, int yRaw, int zRaw, int rgbColor[3]) {
   long xAngle = map(xRaw, xRawMin, xRawMax, -180, 180);
   long yAngle = map(yRaw, yRawMin, yRawMax, -180, 180);
   long zAngle = map(zRaw, zRawMin, zRawMax, -180, 180);
-
   //get the value of saturation
   long saturationFloat;
   if (zAngle < 0) {
@@ -361,12 +290,10 @@ void getAcceColor(int xRaw, int yRaw, int zRaw, int rgbColor[3]) {
     saturationFloat = map(zAngle, 0, 180, 255, 100);
   }
   saturation = (int)saturationFloat;
-
   //get the hue value
   float angle = atan2(yAngle, xAngle) * (180 / PI);
   if (angle < 0) angle = 180 + angle;
   float hueValue = map(angle, 0, 180.0, 0, 259);
   hue = (int)hueValue;
-
   getRGB(hue, saturation, value, rgbColor);
 }

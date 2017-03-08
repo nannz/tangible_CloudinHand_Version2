@@ -84,7 +84,7 @@ int responseDelay = 30;
 // the follow variables are long's because the time, measured in miliseconds,
 // will quickly become a bigger number than can be stored in an int.
 long time = 0;         // the last time the output pin was toggled
-long debounce = 200;   // the debounce time, increase if the output flickers
+long debounce = 100;   // the debounce time, increase if the output flickers
 
 void setup() {
   //capacitive touch, calibration
@@ -121,20 +121,21 @@ void loop() {
 
   //remind the click time is enough using motor drive.
   if (curFsrState == HIGH && (millis() - fsrDownTime) >= fsrHoldTime) {
-    //Serial.println("It's enough hold time.");
+    Serial.println("It's enough hold time.");
     if (totalState == HIGH) {
       //only when the state is on, the click effect would be triggered
       motorLevel = fsrClickDriveEffect;
     }
     //remind the press time is enough.
     if ((millis() - fsrDownTime) >= fsrLongHoldTime) {
-      //Serial.println("It's enough press time.");
+      Serial.println("It's enough press time.");
       motorLevel = fsrPressDriveEffect;
     }
   }
 
   //trigger the hold/press mode.
   if (curFsrState == LOW && prevFsrState == HIGH && millis() - time > debounce) { //手抬起来
+    motorLevel = 0;
     if ((fsrUpTime - fsrDownTime) >= fsrHoldTime) {
       if ((fsrUpTime - fsrDownTime) >= fsrLongHoldTime) {
         //Serial.println("trigger long hold | turn on/off");
@@ -155,8 +156,7 @@ void loop() {
 //          ledState = HIGH; // turn on the led
 //          ledMode = 0; //led starts with mode 0
 //        }
-        motorLevel = 0;
-        totalState = !totalState;
+//        motorLevel = 0;
       } else {
         if (totalState == HIGH) {
           //Serial.println("trigger clicked | change led mode");
@@ -165,20 +165,24 @@ void loop() {
         } else {
           ledState = LOW;
         }
-        motorLevel = 0;
+//        motorLevel = 0;
       }
     } else {
-      motorLevel = 0;
+//      motorLevel = 0;
     }
     time = millis();
   }
 
   if (turnOff == true) {
+    Serial.println("turnning off");
+    motorLevel = 0;
     turnOffLED(currentColor);
     ledState = LOW;
     turnOff = false;
   }
-  if (turnOn = true) {
+  if (turnOn == true) {
+    Serial.println("turnning on");
+    motorLevel = 0;
     turnOnLED(beginColor);
     ledState = HIGH;
     ledMode = 0;
@@ -230,12 +234,13 @@ void loop() {
         //setNeoColor(0, 0, 255);
         rainbow(20);
       }
-    } else {//ledState is LOW
-      setNeoColor(0, 0, 0);
-    }
+    } 
+//    else {//ledState is LOW
+//      setNeoColor(0, 0, 0);
+//    }
   } else {
     ledState = LOW;
-    setNeoColor(0, 0, 0);
+    //setNeoColor(0, 0, 0);
   }
 
   if (acceState == HIGH) {
@@ -269,17 +274,7 @@ void loop() {
     Serial.println(ledMode);
     //capacitiveEnd = 0;
   */
-
-  /*
-    Serial.print("totalState: ");
-    if (totalState == HIGH) {
-      Serial.println("on");
-    }
-    if (totalState == LOW) {
-      Serial.println("off");
-    }
-  */
-
+  
   //run the drive
   drv.setRealtimeValue(motorLevel);
   

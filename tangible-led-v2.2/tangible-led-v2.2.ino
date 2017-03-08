@@ -84,7 +84,7 @@ int responseDelay = 30;
 // the follow variables are long's because the time, measured in miliseconds,
 // will quickly become a bigger number than can be stored in an int.
 long time = 0;         // the last time the output pin was toggled
-long debounce = 200;   // the debounce time, increase if the output flickers
+long debounce = 100;   // the debounce time, increase if the output flickers
 
 void setup() {
   //capacitive touch, calibration
@@ -121,20 +121,21 @@ void loop() {
 
   //remind the click time is enough using motor drive.
   if (curFsrState == HIGH && (millis() - fsrDownTime) >= fsrHoldTime) {
-    //Serial.println("It's enough hold time.");
+    Serial.println("It's enough hold time.");
     if (totalState == HIGH) {
       //only when the state is on, the click effect would be triggered
       motorLevel = fsrClickDriveEffect;
     }
     //remind the press time is enough.
     if ((millis() - fsrDownTime) >= fsrLongHoldTime) {
-      //Serial.println("It's enough press time.");
+      Serial.println("It's enough press time.");
       motorLevel = fsrPressDriveEffect;
     }
   }
 
   //trigger the hold/press mode.
-  if (curFsrState == LOW && prevFsrState == HIGH && millis() - time > debounce) { //手抬起来
+  if (curFsrState == LOW && prevFsrState == HIGH ) { //手抬起来
+    motorLevel = 0;
     if ((fsrUpTime - fsrDownTime) >= fsrHoldTime) {
       if ((fsrUpTime - fsrDownTime) >= fsrLongHoldTime) {
         //Serial.println("trigger long hold | turn on/off");
@@ -148,15 +149,14 @@ void loop() {
           turnOff = false;
         }
 
-//        if (ledState == HIGH) {
-//          ledState = LOW;//turn off the led
-//          ledMode = 0;
-//        } else {
-//          ledState = HIGH; // turn on the led
-//          ledMode = 0; //led starts with mode 0
-//        }
-        motorLevel = 0;
-        totalState = !totalState;
+        //        if (ledState == HIGH) {
+        //          ledState = LOW;//turn off the led
+        //          ledMode = 0;
+        //        } else {
+        //          ledState = HIGH; // turn on the led
+        //          ledMode = 0; //led starts with mode 0
+        //        }
+        //        motorLevel = 0;
       } else {
         if (totalState == HIGH) {
           //Serial.println("trigger clicked | change led mode");
@@ -165,20 +165,24 @@ void loop() {
         } else {
           ledState = LOW;
         }
-        motorLevel = 0;
+        //        motorLevel = 0;
       }
     } else {
-      motorLevel = 0;
+      //      motorLevel = 0;
     }
     time = millis();
   }
 
   if (turnOff == true) {
+    Serial.println("turnning off");
+    motorLevel = 0;
     turnOffLED(currentColor);
     ledState = LOW;
     turnOff = false;
   }
-  if (turnOn = true) {
+  if (turnOn == true) {
+    Serial.println("turnning on");
+    motorLevel = 0;
     turnOnLED(beginColor);
     ledState = HIGH;
     ledMode = 0;
@@ -230,12 +234,13 @@ void loop() {
         //setNeoColor(0, 0, 255);
         rainbow(20);
       }
-    } else {//ledState is LOW
-      setNeoColor(0, 0, 0);
     }
+    //    else {//ledState is LOW
+    //      setNeoColor(0, 0, 0);
+    //    }
   } else {
     ledState = LOW;
-    setNeoColor(0, 0, 0);
+    //setNeoColor(0, 0, 0);
   }
 
   if (acceState == HIGH) {
@@ -270,19 +275,9 @@ void loop() {
     //capacitiveEnd = 0;
   */
 
-  /*
-    Serial.print("totalState: ");
-    if (totalState == HIGH) {
-      Serial.println("on");
-    }
-    if (totalState == LOW) {
-      Serial.println("off");
-    }
-  */
-
   //run the drive
   drv.setRealtimeValue(motorLevel);
-  
+
   prevFsrState = curFsrState;
   delay(responseDelay);
 }
@@ -352,7 +347,6 @@ void getAcceColor(int xRaw, int yRaw, int zRaw, int rgbColor[3]) {
   long xAngle = map(xRaw, xRawMin, xRawMax, -180, 180);
   long yAngle = map(yRaw, yRawMin, yRawMax, -180, 180);
   long zAngle = map(zRaw, zRawMin, zRawMax, -180, 180);
-
   //get the value of saturation
   long saturationFloat;
   if (zAngle < 0) {
@@ -361,12 +355,10 @@ void getAcceColor(int xRaw, int yRaw, int zRaw, int rgbColor[3]) {
     saturationFloat = map(zAngle, 0, 180, 255, 100);
   }
   saturation = (int)saturationFloat;
-
   //get the hue value
   float angle = atan2(yAngle, xAngle) * (180 / PI);
   if (angle < 0) angle = 180 + angle;
   float hueValue = map(angle, 0, 180.0, 0, 259);
   hue = (int)hueValue;
-
   getRGB(hue, saturation, value, rgbColor);
 }
