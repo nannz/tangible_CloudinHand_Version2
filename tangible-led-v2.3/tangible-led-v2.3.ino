@@ -78,7 +78,7 @@ int currentColor[] = {0, 0, 0};
 bool turnOff = false;
 bool turnOn = false;
 int beginColor[]  = {255, 255, 255}; //the color when you turn on the led
-
+int customizeColor[] = {0,0,255};
 
 int responseDelay = 30;
 
@@ -103,7 +103,7 @@ void loop() {
   //reading the fsr value
   fsrReading = analogRead(fsrPin);
   capacitiveRead =  cs_4_2.capacitiveSensor(10);
-  Serial.println(capacitiveRead);
+  
   if (totalState == LOW){
     ledState = LOW;
     acceState = LOW;
@@ -112,7 +112,7 @@ void loop() {
 
 
   if (capacitiveRead >= capaMinRead ) {  
-      Serial.println("test");
+      
       if ( totalState == LOW ) { //如果现在是关机状态,就打开它
         totalState = HIGH;
         turnOn = true;
@@ -123,6 +123,8 @@ void loop() {
         ledState = LOW;
         motorLevel = 0;
       }
+  }else{
+    acceState = LOW;
   }
   //time = millis();
 
@@ -170,10 +172,18 @@ void loop() {
         acceState = LOW;
       }else{
         //it's already turn on
-        ledState = HIGH;
-        ledMode += 1;
-        acceState = LOW;
+        if (acceState == HIGH ){
+          ledState = LOW;
+          customizeColor[0] = currentColor[0];
+          customizeColor[1] = currentColor[1];
+          customizeColor[2] = currentColor[2];
+        }else{
+          ledState = HIGH;
+          ledMode += 1;
+        }  
+//        acceState = LOW;
       }
+      
       if((fsrUpTime - fsrDownTime) >= fsrLongHoldTime) {
         if(totalState == HIGH){ // long hold to turn off
           totalState = LOW;
@@ -201,7 +211,7 @@ void loop() {
   }
   if (turnOn == true) {
     Serial.println("turnning on");
-    //motorLevel = 0;
+    motorLevel = 0;
     turnOnLED(beginColor);
     ledState = HIGH;
     ledMode = 0;
@@ -209,6 +219,33 @@ void loop() {
   }
 
   if (totalState == HIGH && turnOn == false){
+    if (ledState == HIGH){
+      if (ledMode % 4 == 0) {
+        //Serial.println("Color mode: 0");
+        setNeoColor(colorMode0[0], colorMode0[1], colorMode0[2]);
+      } else if (ledMode % 4 == 1) {
+        //Serial.println("Color mode: 1");
+        setNeoColor(colorMode1[0], colorMode1[1], colorMode1[2]);
+      } else if (ledMode % 4 == 2) {
+        //Serial.println("Color mode: 2");
+        setNeoColor(colorMode2[0], colorMode2[1], colorMode2[2]);
+      } else if (ledMode % 4 == 3) {
+        //Serial.println("Color mode: 3");
+        setNeoColor(customizeColor[0], customizeColor[1], customizeColor[2]);
+        //rainbow(20);
+      }
+    }
+
+    if (acceState == HIGH){
+      //read data from accelerometer
+      xRaw = ReadAxis(xpin);
+      yRaw = ReadAxis(ypin);
+      zRaw = ReadAxis(zpin);
+      //showRawData();//show the current x,y,z raw data
+      //AutoCalibrate(xRaw, yRaw, zRaw);//check the max and min of xyzAxises
+      getAcceColor(xRaw, yRaw, zRaw, rgbColor);
+      setNeoColor(rgbColor[0], rgbColor[1], rgbColor[2]);
+    }
     
   }
   
@@ -234,7 +271,11 @@ void rainbow(uint8_t wait) {
   uint16_t i, j;
   for (j = 0; j < 256; j++) {
     for (i = 0; i < pixels.numPixels(); i++) {
+      //motorLevel = 0;
+      drv.setRealtimeValue(0);
+      
       pixels.setPixelColor(i, Wheel((i + j) & 255));
+      
     }
     pixels.show();
     delay(wait);
@@ -285,9 +326,9 @@ void getAcceColor(int xRaw, int yRaw, int zRaw, int rgbColor[3]) {
   //get the value of saturation
   long saturationFloat;
   if (zAngle < 0) {
-    saturationFloat = map(zAngle, -180, 0, 100, 255);
+    saturationFloat = map(zAngle, -180, 0, 150, 255);
   } else {
-    saturationFloat = map(zAngle, 0, 180, 255, 100);
+    saturationFloat = map(zAngle, 0, 180, 255, 150);
   }
   saturation = (int)saturationFloat;
   //get the hue value

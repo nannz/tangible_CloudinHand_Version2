@@ -15,7 +15,7 @@ void turnOffLED(int endColor[3]) {
     }
     //setLEDColor(endColor[0], endColor[1], endColor[2]);
     setNeoColor(endColor[0], endColor[1], endColor[2]);
-    
+    /*
     Serial.print("currentRGB: ");
     Serial.print(endColor[0]);
     Serial.print(", ");
@@ -23,7 +23,7 @@ void turnOffLED(int endColor[3]) {
     Serial.print(", ");
     Serial.print(endColor[2]);
     Serial.println(". ");
-    
+    */
     //finish "fading" turn off
     if (endColor[0] == 0 && endColor[1] == 0 && endColor[2] == 0) {
       finish = true;
