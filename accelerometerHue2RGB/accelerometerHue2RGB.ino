@@ -41,10 +41,6 @@ void loop() {
   //check the max and min of xyzAxises
   //AutoCalibrate(xRaw, yRaw, zRaw);
 
-  // Convert raw values to 'milli-Gs"
-  long xScaled = map(xRaw, xRawMin, xRawMax, -1000, 1000);
-  long yScaled = map(yRaw, yRawMin, yRawMax, -1000, 1000);
-  long zScaled = map(zRaw, zRawMin, zRawMax, -1000, 1000);
   long xAngle = map(xRaw, xRawMin, xRawMax, -180, 180);
   long yAngle = map(yRaw, yRawMin, yRawMax, -180, 180);
   long zAngle = map(zRaw, zRawMin, zRawMax, -180, 180);
@@ -64,8 +60,7 @@ void loop() {
     saturationFloat= map(zAngle,-180,0,0,255);
   }else{
     saturationFloat= map(zAngle,0,180,255,0);
-  }
-   
+  }   
   saturation = (int)saturationFloat;
   /*
   Serial.print("saturation: ");

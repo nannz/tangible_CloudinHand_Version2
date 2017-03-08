@@ -50,17 +50,40 @@ int motorLevel = 0;
 int fsrClickDriveEffect = 50;
 int fsrPressDriveEffect = 80;
 
-
-
+//the accelerometer
+const int xpin = A2;
+const int ypin = A1;
+const int zpin = A0;
+// Raw Ranges:
+int xRawMin = 410;
+int xRawMax = 625;
+int yRawMin = 395;
+int yRawMax = 620;
+int zRawMin = 430;
+int zRawMax = 655;
+int xRaw = 0;
+int yRaw = 0;
+int zRaw = 0;
+// Take multiple samples to reduce noise
+const int sampleSize = 10;
+int hue = 0;
+int saturation = 255;
+int value = 255;
+int rgbColor[] = {0, 0, 0};
 
 int responseDelay = 30;
+
+// the follow variables are long's because the time, measured in miliseconds,
+// will quickly become a bigger number than can be stored in an int.
+long time = 0;         // the last time the output pin was toggled
+long debounce = 200;   // the debounce time, increase if the output flickers
 
 void setup() {
   //capacitive touch, calibration
   cs_4_2.set_CS_AutocaL_Millis(0xFFFFFFFF);     // turn off autocalibrate on channel 1 - just as an example
   pixels.begin(); // This initializes the NeoPixel library.
   pixels.show();
-  
+
   Serial.begin(9600);
   //begin the motor drive
   drv.begin();
@@ -103,11 +126,11 @@ void loop() {
   }
 
   //trigger the hold/press mode.
-  if (curFsrState == LOW && prevFsrState == HIGH ) { //手抬起来
+  if (curFsrState == LOW && prevFsrState == HIGH && millis()-time > debounce) { //手抬起来
     if ((fsrUpTime - fsrDownTime) >= fsrHoldTime) {
       if ((fsrUpTime - fsrDownTime) >= fsrLongHoldTime) {
         Serial.println("trigger long hold | turn on/off");
-        totalState = !totalState;
+        
         if (ledState == HIGH) {
           ledState = LOW;//turn off the led
           ledMode = 0;
@@ -116,6 +139,7 @@ void loop() {
           ledMode = 0; //led starts with mode 0
         }
         motorLevel = 0;
+        totalState = !totalState;
       } else {
         if (totalState == HIGH) {
           Serial.println("trigger clicked | change led mode");
@@ -129,6 +153,7 @@ void loop() {
     } else {
       motorLevel = 0;
     }
+    time = millis();
   }
   prevFsrState = curFsrState;
 
@@ -136,7 +161,7 @@ void loop() {
   if (totalState == HIGH ) {
 
     //long capacitiveStart = millis();
-    long capacitiveRead =  cs_4_2.capacitiveSensor(30);
+    long capacitiveRead =  cs_4_2.capacitiveSensor(10);
     if (capacitiveRead >= capaMinRead) {
       //capacitiveStart = millis();
       acceState = HIGH;
@@ -161,26 +186,48 @@ void loop() {
     if (ledState == HIGH) {
       if (ledMode % 4 == 0) {
         Serial.println("Color mode: 0");
-        setNeoColor(colorMode0[0],colorMode0[1],colorMode0[2]);
+        setNeoColor(colorMode0[0], colorMode0[1], colorMode0[2]);
       } else if (ledMode % 4 == 1) {
         Serial.println("Color mode: 1");
-        setNeoColor(colorMode1[0],colorMode1[1],colorMode1[2]);
+        setNeoColor(colorMode1[0], colorMode1[1], colorMode1[2]);
       } else if (ledMode % 4 == 2) {
         Serial.println("Color mode: 2");
-        setNeoColor(colorMode2[0],colorMode2[1],colorMode2[2]);
+        setNeoColor(colorMode2[0], colorMode2[1], colorMode2[2]);
       } else if (ledMode % 4 == 3) {
         Serial.println("Color mode: 3");
-        setNeoColor(0,0,255);
+        setNeoColor(0, 0, 255);
         //rainbow(10);
       }
-    }else{
-      setNeoColor(0,0,0);
+    } else {
+      setNeoColor(0, 0, 0);
     }
-  }else{
+  } else {
     ledState = LOW;
-    setNeoColor(0,0,0);
+    setNeoColor(0, 0, 0);
   }
 
+  if (acceState == HIGH) {
+    //read data from accelerometer
+    xRaw = ReadAxis(xpin);
+    yRaw = ReadAxis(ypin);
+    zRaw = ReadAxis(zpin);
+
+    //showRawData();//show the current x,y,z raw data
+    //AutoCalibrate(xRaw, yRaw, zRaw);//check the max and min of xyzAxises
+
+    getAcceColor(xRaw, yRaw, zRaw, rgbColor);
+    Serial.print("rgb: ");
+    Serial.print(rgbColor[0]);
+    Serial.print(", ");
+    Serial.print(rgbColor[1]);
+    Serial.print(", ");
+    Serial.print(rgbColor[2]);
+    Serial.println(" ");
+
+    setNeoColor(rgbColor[0], rgbColor[1], rgbColor[2]);
+  }
+
+  
   Serial.print("acceState: ");
   Serial.print(acceState);
   Serial.print(" | ledState: ");
@@ -203,19 +250,19 @@ void loop() {
 }
 
 
-void setNeoColor(int r, int g, int b){
-  for(int i=0;i<NUMPIXELS;i++){
+void setNeoColor(int r, int g, int b) {
+  for (int i = 0; i < NUMPIXELS; i++) {
     // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
-    pixels.setPixelColor(i, pixels.Color(r,g,b)); // Moderately bright green color.
+    pixels.setPixelColor(i, pixels.Color(r, g, b)); // Moderately bright green color.
     pixels.show(); // This sends the updated pixel color to the hardware.
     //delay(delayLed); // Delay for a period of time (in milliseconds).
   }
 }
 void rainbow(uint8_t wait) {
   uint16_t i, j;
-  for(j=0; j<256; j++) {
-    for(i=0; i<pixels.numPixels(); i++) {
-      pixels.setPixelColor(i, Wheel((i+j) & 255));
+  for (j = 0; j < 256; j++) {
+    for (i = 0; i < pixels.numPixels(); i++) {
+      pixels.setPixelColor(i, Wheel((i + j) & 255));
     }
     pixels.show();
     delay(wait);
@@ -225,13 +272,49 @@ void rainbow(uint8_t wait) {
 // The colours are a transition r - g - b - back to r.
 uint32_t Wheel(byte WheelPos) {
   WheelPos = 255 - WheelPos;
-  if(WheelPos < 85) {
+  if (WheelPos < 85) {
     return pixels.Color(255 - WheelPos * 3, 0, WheelPos * 3);
   }
-  if(WheelPos < 170) {
+  if (WheelPos < 170) {
     WheelPos -= 85;
     return pixels.Color(0, WheelPos * 3, 255 - WheelPos * 3);
   }
   WheelPos -= 170;
   return pixels.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
+
+int ReadAxis(int axisPin)
+{
+  long reading = 0;
+  analogRead(axisPin);
+  delay(1);
+  for (int i = 0; i < sampleSize; i++)
+  {
+    reading += analogRead(axisPin);
+  }
+  return reading / sampleSize;
+}
+
+
+void getAcceColor(int xRaw, int yRaw, int zRaw, int rgbColor[3]) {
+  long xAngle = map(xRaw, xRawMin, xRawMax, -180, 180);
+  long yAngle = map(yRaw, yRawMin, yRawMax, -180, 180);
+  long zAngle = map(zRaw, zRawMin, zRawMax, -180, 180);
+
+  //get the value of saturation
+  long saturationFloat;
+  if (zAngle < 0) {
+    saturationFloat = map(zAngle, -180, 0, 100, 255);
+  } else {
+    saturationFloat = map(zAngle, 0, 180, 255, 100);
+  }
+  saturation = (int)saturationFloat;
+
+  //get the hue value
+  float angle = atan2(yAngle, xAngle) * (180 / PI);
+  if (angle < 0) angle = 180 + angle;
+  float hueValue = map(angle, 0, 180.0, 0, 259);
+  hue = (int)hueValue;
+
+  getRGB(hue, saturation, value, rgbColor);
 }
